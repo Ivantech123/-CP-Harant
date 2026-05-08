@@ -1,3 +1,17 @@
 {
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "functions": {
+    "app/api/mcp/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/search-lawyers/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/lawyer-profile/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/health/route.ts": {
+      "maxDuration": 15
+    }
+  }
 }

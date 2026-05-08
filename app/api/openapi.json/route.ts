@@ -38,6 +38,20 @@ export async function GET() {
               required: false,
               description: 'Имя или фамилия юриста',
               schema: { type: 'string' }
+            },
+            {
+              name: 'limit',
+              in: 'query',
+              required: false,
+              description: 'Максимум результатов, от 1 до 25',
+              schema: { type: 'integer', minimum: 1, maximum: 25 }
+            },
+            {
+              name: 'page',
+              in: 'query',
+              required: false,
+              description: 'Номер страницы Harant',
+              schema: { type: 'integer', minimum: 1 }
             }
           ],
           responses: {
@@ -116,6 +130,29 @@ export async function GET() {
                 }
               }
             }
+          }
+        }
+      },
+      '/api/mcp': {
+        get: {
+          operationId: 'mcpStream',
+          summary: 'MCP Streamable HTTP endpoint',
+          description: 'Endpoint для MCP клиентов. Поддерживает Streamable HTTP через GET/POST/DELETE.'
+        },
+        post: {
+          operationId: 'mcpPost',
+          summary: 'MCP JSON-RPC POST',
+          description: 'Основной endpoint для initialize, tools/list и tools/call.'
+        }
+      },
+      '/api/health': {
+        get: {
+          operationId: 'healthCheck',
+          summary: 'Проверка доступности',
+          description: 'Проверяет, может ли Vercel runtime достучаться до Harant.ru',
+          responses: {
+            '200': { description: 'Harant доступен' },
+            '503': { description: 'Harant недоступен или вернул ошибку' }
           }
         }
       }

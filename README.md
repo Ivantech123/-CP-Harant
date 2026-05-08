@@ -1,52 +1,87 @@
-# ⚖️ Harant MCP Server
+# Harant MCP Server
 
-MCP сервер для поиска юристов на [harant.ru](https://harant.ru) — работает через Vercel, никакой установки.
+Production-ready MCP server for searching public lawyer profiles on [harant.ru](https://harant.ru). It runs as a Next.js App Router application and is ready for Vercel.
 
-## 🚀 Деплой на Vercel (1 минута)
+## What It Provides
+
+- `POST /api/mcp` - Streamable HTTP MCP endpoint for AI clients.
+- `GET /api/search-lawyers` - plain JSON search API for debugging and non-MCP clients.
+- `GET /api/lawyer-profile` - plain JSON profile parser.
+- `GET /api/health` - runtime health check for Vercel.
+- `GET /api/openapi.json` - OpenAPI description for the JSON API.
+
+## MCP Tools
+
+- `search_lawyers` - search by city, specialization, name, page, and limit.
+- `get_lawyer_profile` - fetch a detailed profile from a Harant profile URL.
+- `get_specialization_guide` - map natural language legal problems to Harant categories.
+- `health_check` - verify Harant reachability from the deployed runtime.
+
+The server also exposes `harant://service-guide` as an MCP resource and `find_lawyer_brief` as an MCP prompt.
+
+## Deploy To Vercel
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Ivantech123/-CP-Harant)
 
-1. Нажмите кнопку выше
-2. Войдите в Vercel (или зарегистрируйтесь)
-3. Нажмите **Deploy**
-4. Получите URL вида `https://ваш-проект.vercel.app/api/mcp`
+After deploy, use:
 
-## 🔗 Подключение к AI
+```text
+https://your-project.vercel.app/api/mcp
+```
 
-После деплоя вставьте URL в настройки:
+No environment variables are required.
 
-### Gemini / Google AI Studio
-Settings → MCP Servers → Add → вставьте URL
+## Local Development
 
-### Claude Desktop
+```bash
+npm install
+npm run dev
+```
+
+Open:
+
+```text
+http://localhost:3000
+http://localhost:3000/api/mcp
+```
+
+## Client Examples
+
+Streamable HTTP clients:
+
 ```json
 {
   "mcpServers": {
     "harant": {
-      "url": "https://ваш-проект.vercel.app/api/mcp"
+      "url": "https://your-project.vercel.app/api/mcp"
     }
   }
 }
 ```
 
-### Cursor
+Stdio-only clients can use `mcp-remote`:
+
 ```json
 {
   "mcpServers": {
     "harant": {
-      "url": "https://ваш-проект.vercel.app/api/mcp"
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://your-project.vercel.app/api/mcp"]
     }
   }
 }
 ```
 
-## �️ Инструменты
+## Verification
 
-- **search_lawyers** — поиск по городу, специализации, имени
-- **get_lawyer_profile** — детальный профиль по URL
+```bash
+npm run typecheck
+npm test
+npm run build
+```
 
-## 💬 Примеры
+Or run all checks:
 
-- «Найди юристов в Москве»
-- «Покажи юристов по уголовному праву»
-- «Получи профиль https://harant.ru/lawyers/...»
+```bash
+npm run verify
+```

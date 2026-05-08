@@ -1,71 +1,46 @@
 @echo off
 chcp 65001 >nul
-title Harant MCP Server - Установка
+title Harant MCP Server - Setup
 
 echo.
-echo ╔══════════════════════════════════════════╗
-echo ║     Harant MCP Server - Установка       ║
-echo ╚══════════════════════════════════════════╝
+echo Harant MCP Server - setup and verification
 echo.
 
-:: Проверка Node.js
 node --version >nul 2>&1
 if errorlevel 1 (
-    echo [ОШИБКА] Node.js не установлен!
-    echo Скачайте с https://nodejs.org/ и запустите снова.
+    echo [ERROR] Node.js is not installed.
+    echo Download Node.js from https://nodejs.org/
     pause
     exit /b 1
 )
 
-echo [1/3] Установка зависимостей...
+echo [1/3] Installing dependencies...
 call npm install
 if errorlevel 1 (
-    echo [ОШИБКА] Не удалось установить зависимости
+    echo [ERROR] npm install failed.
     pause
     exit /b 1
 )
 
 echo.
-echo [2/3] Сборка проекта...
-call npm run build
+echo [2/3] Running verification...
+call npm run verify
 if errorlevel 1 (
-    echo [ОШИБКА] Не удалось собрать проект
+    echo [ERROR] Verification failed.
     pause
     exit /b 1
 )
 
 echo.
-echo [3/3] Настройка конфигурации для Gemini...
-
-:: Получаем текущую директорию
-set CURRENT_DIR=%~dp0
-set CURRENT_DIR=%CURRENT_DIR:~0,-1%
-
-:: Создаём конфиг для Claude Desktop
-set CLAUDE_CONFIG=%APPDATA%\Claude\claude_desktop_config.json
-if not exist "%APPDATA%\Claude" mkdir "%APPDATA%\Claude"
-
-echo {> "%CLAUDE_CONFIG%"
-echo   "mcpServers": {>> "%CLAUDE_CONFIG%"
-echo     "harant": {>> "%CLAUDE_CONFIG%"
-echo       "command": "node",>> "%CLAUDE_CONFIG%"
-echo       "args": ["%CURRENT_DIR:\=\\%\\dist\\index.js"]>> "%CLAUDE_CONFIG%"
-echo     }>> "%CLAUDE_CONFIG%"
-echo   }>> "%CLAUDE_CONFIG%"
-echo }>> "%CLAUDE_CONFIG%"
-
+echo [3/3] Ready.
 echo.
-echo ╔══════════════════════════════════════════╗
-echo ║           ✅ ГОТОВО!                     ║
-echo ╚══════════════════════════════════════════╝
+echo Local development:
+echo   npm run dev
 echo.
-echo Путь к серверу:
-echo   %CURRENT_DIR%\dist\index.js
+echo Local MCP URL:
+echo   http://localhost:3000/api/mcp
 echo.
-echo Для Gemini добавьте в настройки MCP:
-echo   Command: node
-echo   Args:    %CURRENT_DIR%\dist\index.js
-echo.
-echo Для Claude Desktop конфиг уже создан автоматически.
+echo Vercel MCP URL:
+echo   https://your-project.vercel.app/api/mcp
 echo.
 pause
