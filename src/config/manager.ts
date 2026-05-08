@@ -4,7 +4,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { ServerConfigSchema, type ServerConfig } from './schema';
-import { ZodError } from 'zod';
 
 /**
  * Validation result for configuration

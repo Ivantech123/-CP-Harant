@@ -1,139 +1,52 @@
-# Harant MCP Server
+# ⚖️ Harant MCP Server
 
-MCP Server для интеграции юридического портала Harant (https://harant.ru/) с AI моделями.
+MCP сервер для поиска юристов на [harant.ru](https://harant.ru) — работает через Vercel, никакой установки.
 
-## Описание
+## 🚀 Деплой на Vercel (1 минута)
 
-Harant MCP Server реализует Model Context Protocol (MCP) для предоставления AI моделям доступа к информации о юристах с портала Harant. Сервер предоставляет два основных инструмента:
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Ivantech123/-CP-Harant)
 
-1. **search_lawyers** - поиск юристов по критериям (город, специализация, имя)
-2. **get_lawyer_profile** - получение детального профиля юриста
+1. Нажмите кнопку выше
+2. Войдите в Vercel (или зарегистрируйтесь)
+3. Нажмите **Deploy**
+4. Получите URL вида `https://ваш-проект.vercel.app/api/mcp`
 
-## Требования
+## 🔗 Подключение к AI
 
-- Node.js >= 18.0.0
-- npm >= 9.0.0
+После деплоя вставьте URL в настройки:
 
-## Установка
-
-```bash
-npm install
-```
-
-## Разработка
-
-```bash
-# Сборка проекта
-npm run build
-
-# Режим разработки с автоматической пересборкой
-npm run dev
-
-# Запуск тестов
-npm test
-
-# Запуск тестов в режиме watch
-npm run test:watch
-
-# Проверка типов
-npm run lint
-```
-
-## Структура проекта
-
-```
-harant-mcp-server/
-├── src/                    # Исходный код
-│   ├── index.ts           # Точка входа
-│   ├── server.ts          # MCP сервер
-│   ├── tools/             # Реализация MCP инструментов
-│   ├── http/              # HTTP клиент
-│   ├── parser/            # HTML парсеры
-│   ├── cache/             # Менеджер кэша
-│   ├── formatter/         # Форматирование данных
-│   ├── config/            # Управление конфигурацией
-│   ├── logger/            # Логирование
-│   └── types/             # TypeScript типы
-├── tests/                 # Тесты
-│   ├── unit/             # Юнит-тесты
-│   ├── property/         # Property-based тесты
-│   ├── integration/      # Интеграционные тесты
-│   └── fixtures/         # Тестовые данные
-├── config/               # Конфигурационные файлы
-└── dist/                 # Скомпилированный код
-
-```
-
-## Настройка для AI моделей
-
-### Gemini (Google AI Studio)
-
-📖 **[Подробная инструкция по настройке для Gemini](./GEMINI_SETUP.md)**
-
-Краткая версия:
-
-1. Соберите проект:
-```bash
-npm run build
-```
-
-2. Добавьте сервер в конфигурацию Gemini (см. [GEMINI_SETUP.md](./GEMINI_SETUP.md))
-
-3. Используйте инструменты `search_lawyers` и `get_lawyer_profile` в чате с Gemini
+### Gemini / Google AI Studio
+Settings → MCP Servers → Add → вставьте URL
 
 ### Claude Desktop
-
-Добавьте в `claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
     "harant": {
-      "command": "node",
-      "args": ["C:\\Users\\Иван\\Desktop\\mcp harant\\dist\\index.js"],
-      "env": {
-        "NODE_ENV": "production"
-      }
+      "url": "https://ваш-проект.vercel.app/api/mcp"
     }
   }
 }
 ```
 
-### Cline (VS Code)
-
-Добавьте в `.vscode/settings.json`:
+### Cursor
 ```json
 {
-  "mcp.servers": {
+  "mcpServers": {
     "harant": {
-      "command": "node",
-      "args": ["dist/index.js"]
+      "url": "https://ваш-проект.vercel.app/api/mcp"
     }
   }
 }
 ```
 
-## Конфигурация
+## �️ Инструменты
 
-Конфигурация сервера находится в файле `config/default.json`. Основные параметры:
+- **search_lawyers** — поиск по городу, специализации, имени
+- **get_lawyer_profile** — детальный профиль по URL
 
-- `harant.baseUrl` - базовый URL портала Harant
-- `http.timeout` - таймаут HTTP запросов (мс)
-- `http.maxRetries` - максимальное количество повторных попыток
-- `cache.ttl` - время жизни кэша (секунды)
-- `logging.level` - уровень логирования (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+## 💬 Примеры
 
-## Технологии
-
-- **TypeScript** - типобезопасность
-- **@modelcontextprotocol/sdk** - официальный MCP SDK
-- **axios** - HTTP клиент
-- **cheerio** - парсинг HTML
-- **node-cache** - кэширование
-- **winston** - логирование
-- **zod** - валидация схем
-- **vitest** - тестирование
-- **fast-check** - property-based тестирование
-
-## Лицензия
-
-MIT
+- «Найди юристов в Москве»
+- «Покажи юристов по уголовному праву»
+- «Получи профиль https://harant.ru/lawyers/...»
