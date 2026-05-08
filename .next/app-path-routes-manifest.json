@@ -1,8 +1,0 @@
-{
-  "/_not-found/page": "/_not-found",
-  "/api/lawyer-profile/route": "/api/lawyer-profile",
-  "/api/mcp/route": "/api/mcp",
-  "/api/search-lawyers/route": "/api/search-lawyers",
-  "/api/openapi.json/route": "/api/openapi.json",
-  "/page": "/"
-}
