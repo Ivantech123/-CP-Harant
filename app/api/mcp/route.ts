@@ -4,6 +4,90 @@ import * as cheerio from 'cheerio';
 
 const BASE_URL = 'https://harant.ru';
 
+// Map of Russian city names to harant.ru URL slugs
+const CITY_SLUGS: Record<string, string> = {
+  'москва': 'moskva',
+  'санкт-петербург': 'sankt-peterburg',
+  'спб': 'sankt-peterburg',
+  'питер': 'sankt-peterburg',
+  'новосибирск': 'novosibirsk',
+  'екатеринбург': 'ekaterinburg',
+  'казань': 'kazan',
+  'нижний новгород': 'nizhnij-novgorod',
+  'челябинск': 'chelyabinsk',
+  'самара': 'samara',
+  'омск': 'omsk',
+  'ростов-на-дону': 'rostov-na-donu',
+  'ростов': 'rostov-na-donu',
+  'уфа': 'ufa',
+  'красноярск': 'krasnoyarsk',
+  'воронеж': 'voronezh',
+  'пермь': 'perm',
+  'волгоград': 'volgograd',
+  'краснодар': 'krasnodar',
+  'саратов': 'saratov',
+  'тюмень': 'tyumen',
+  'тольятти': 'tolyatti',
+  'ижевск': 'izhevsk',
+  'барнаул': 'barnaul',
+  'ульяновск': 'ulyanovsk',
+  'иркутск': 'irkutsk',
+  'хабаровск': 'habarovsk',
+  'ярославль': 'yaroslavl',
+  'владивосток': 'vladivostok',
+  'махачкала': 'mahachkala',
+  'томск': 'tomsk',
+  'оренбург': 'orenburg',
+  'кемерово': 'kemerovo',
+  'новокузнецк': 'novokuzneczk',
+  'рязань': 'ryazan',
+  'астрахань': 'astrahan',
+  'набережные челны': 'naberezhnye-chelny',
+  'пенза': 'penza',
+  'липецк': 'lipeczk',
+  'тула': 'tula',
+  'киров': 'kirov',
+  'чебоксары': 'cheboksary',
+  'калининград': 'kaliningrad',
+  'брянск': 'bryansk',
+  'курск': 'kursk',
+  'иваново': 'ivanovo',
+  'магнитогорск': 'magnitogorsk',
+  'тверь': 'tver',
+  'ставрополь': 'stavropol',
+  'белгород': 'belgorod',
+  'нижний тагил': 'nizhnij-tagil',
+  'архангельск': 'arhangelsk',
+  'владимир': 'vladimir',
+  'сочи': 'sochi',
+  'саранск': 'saransk',
+  'чита': 'chita',
+  'якутск': 'yakutsk',
+  'улан-удэ': 'ulan-ude',
+  'мурманск': 'murmansk',
+  'смоленск': 'smolensk',
+  'вологда': 'vologda',
+  'череповец': 'cherepovecz',
+  'владикавказ': 'vladikavkaz',
+  'грозный': 'groznyj',
+  'нальчик': 'nalchik',
+  'сыктывкар': 'syktyvkar',
+  'петрозаводск': 'petrozavodsk',
+  'орел': 'oryol',
+  'орёл': 'oryol',
+  'тамбов': 'tambov',
+  'кострома': 'kostroma',
+  'йошкар-ола': 'joshkar-ola',
+  'псков': 'pskov',
+  'великий новгород': 'velikij-novgorod',
+  'калуга': 'kaluga',
+};
+
+function getCitySlug(city: string): string {
+  const lower = city.toLowerCase().trim();
+  return CITY_SLUGS[lower] || lower.replace(/\s+/g, '-').replace(/[^a-zа-яё-]/gi, '');
+}
+
 async function fetchHtml(url: string): Promise<string> {
   const res = await fetch(url, {
     headers: {
@@ -24,78 +108,96 @@ const handler = createMcpHandler(
       'search_lawyers',
       'Поиск юристов на портале Harant по городу, специализации или имени',
       {
-        city: z.string().optional().describe('Город (например: Москва, Санкт-Петербург)'),
+        city: z.string().optional().describe('Город (например: Москва, Саранск, Краснодар)'),
         specialization: z.string().optional().describe('Специализация (например: уголовное право)'),
-        name: z.string().optional().describe('Имя или фамилия юриста'),
+        name: z.string().optional().describe('Имя или фамилия юриста для фильтрации'),
       },
       async ({ city, specialization, name }) => {
         try {
-          const params = new URLSearchParams();
-          if (city) params.set('city', city);
-          if (specialization) params.set('specialization', specialization);
-          if (name) params.set('name', name);
+          // Build URL: harant.ru/lawyers/{city-slug}/
+          let url: string;
+          if (city) {
+            const slug = getCitySlug(city);
+            url = `${BASE_URL}/lawyers/${slug}/`;
+          } else {
+            url = `${BASE_URL}/lawyers/`;
+          }
 
-          const url = `${BASE_URL}/lawyers/?${params.toString()}`;
           const html = await fetchHtml(url);
           const $ = cheerio.load(html);
 
           const results: Array<{
             name: string;
             city: string;
-            specialization: string;
+            specialization: string[];
             profileUrl: string;
             rating?: number;
+            experience?: string;
           }> = [];
 
-          // Try multiple selector patterns for robustness
-          const cardSelectors = [
-            '.lawyer-card', '.lawyer-item', '.specialist-card',
-            '[class*="lawyer"]', '[class*="specialist"]', '.card'
-          ];
+          // Parse lawyer cards — harant uses <article> or divs with lawyer links
+          // Each lawyer has a link like /lawyers/{city}/{slug}/
+          const lawyerLinks = new Set<string>();
 
-          let cards = $('');
-          for (const sel of cardSelectors) {
-            cards = $(sel);
-            if (cards.length > 0) break;
-          }
+          $('a[href*="/lawyers/"]').each((_, el) => {
+            const href = $(el).attr('href') || '';
+            // Match profile URLs: /lawyers/{city}/{name-slug}/
+            if (/\/lawyers\/[^/]+\/[^/]+\/$/.test(href) && !href.includes('/cat/')) {
+              lawyerLinks.add(href.startsWith('http') ? href : `${BASE_URL}${href}`);
+            }
+          });
 
-          if (cards.length === 0) {
-            // Fallback: look for links with lawyer-like URLs
-            $('a[href*="/lawyers/"], a[href*="/specialist/"]').each((_, el) => {
-              const href = $(el).attr('href') || '';
-              const text = $(el).text().trim();
-              if (text && href) {
-                results.push({
-                  name: text,
-                  city: city || 'Не указан',
-                  specialization: specialization || 'Не указана',
-                  profileUrl: href.startsWith('http') ? href : `${BASE_URL}${href}`,
-                });
-              }
+          // For each unique lawyer link, extract info from surrounding context
+          $('a[href*="/lawyers/"]').each((_, el) => {
+            const href = $(el).attr('href') || '';
+            if (!/\/lawyers\/[^/]+\/[^/]+\/$/.test(href) || href.includes('/cat/')) return;
+
+            const profileUrl = href.startsWith('http') ? href : `${BASE_URL}${href}`;
+            const lawyerName = $(el).text().trim();
+            if (!lawyerName || lawyerName.length < 3) return;
+
+            // Get parent container for more info
+            const container = $(el).closest('article, .lawyer-item, [class*="lawyer"], li, div').first();
+            
+            // Extract specializations from nearby links
+            const specs: string[] = [];
+            container.find('a[href*="/cat/"]').each((_, specEl) => {
+              const spec = $(specEl).text().trim();
+              if (spec) specs.push(spec);
             });
-          } else {
-            cards.each((_, el) => {
-              const card = $(el);
-              const nameEl = card.find('[class*="name"], h2, h3, .title').first();
-              const cityEl = card.find('[class*="city"], [class*="location"]').first();
-              const specEl = card.find('[class*="spec"], [class*="category"]').first();
-              const linkEl = card.find('a').first();
-              const ratingEl = card.find('[class*="rating"], [class*="score"]').first();
 
-              const lawyerName = nameEl.text().trim();
-              const href = linkEl.attr('href') || '';
+            // Extract rating
+            const ratingText = container.find('[class*="rating"], [class*="score"]').first().text().trim();
+            const rating = parseFloat(ratingText) || undefined;
 
-              if (lawyerName) {
-                results.push({
-                  name: lawyerName,
-                  city: cityEl.text().trim() || city || 'Не указан',
-                  specialization: specEl.text().trim() || specialization || 'Не указана',
-                  profileUrl: href.startsWith('http') ? href : `${BASE_URL}${href}`,
-                  rating: parseFloat(ratingEl.text()) || undefined,
-                });
-              }
+            // Extract experience
+            const expText = container.text().match(/[Сс]таж\s+(?:более\s+)?(\d+)\s+лет/)?.[0] || '';
+
+            // Filter by name if provided
+            if (name) {
+              const nameLower = name.toLowerCase();
+              if (!lawyerName.toLowerCase().includes(nameLower)) return;
+            }
+
+            // Filter by specialization if provided
+            if (specialization && specs.length > 0) {
+              const specLower = specialization.toLowerCase();
+              const hasSpec = specs.some(s => s.toLowerCase().includes(specLower));
+              if (!hasSpec) return;
+            }
+
+            // Avoid duplicates
+            if (results.some(r => r.profileUrl === profileUrl)) return;
+
+            results.push({
+              name: lawyerName,
+              city: city || 'Не указан',
+              specialization: specs.length > 0 ? specs : ['Не указана'],
+              profileUrl,
+              rating,
+              experience: expText || undefined,
             });
-          }
+          });
 
           if (results.length === 0) {
             return {
