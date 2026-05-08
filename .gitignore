@@ -6,3 +6,5 @@ dist/
 .env*.local
 
 # .next/ intentionally NOT ignored — built locally and committed for Vercel
+# but exclude the webpack cache (large binary files, not needed by Vercel)
+.next/cache/
