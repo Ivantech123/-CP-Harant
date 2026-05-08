@@ -236,7 +236,7 @@ const handler = createMcpHandler(
     // Tool 2: Get lawyer profile
     server.tool(
       'get_lawyer_profile',
-      'Получение детального профиля юриста по URL с портала Harant',
+      'Получение детального профиля юриста по URL с портала Harant, включая судебные дела и аналитику',
       {
         profileUrl: z.string().url().describe('URL профиля юриста на harant.ru'),
       },
@@ -252,7 +252,6 @@ const handler = createMcpHandler(
           const html = await fetchHtml(profileUrl);
           const $ = cheerio.load(html);
 
-          // Extract profile data with multiple fallback selectors
           const getName = () =>
             $('h1').first().text().trim() ||
             $('[class*="profile-name"], [class*="lawyer-name"]').first().text().trim() ||
@@ -263,32 +262,105 @@ const handler = createMcpHandler(
 
           const getSpecs = () => {
             const specs: string[] = [];
-            $('[class*="spec"], [class*="practice"], [class*="category"]').each((_, el) => {
+            $('a[href*="/cat/"]').each((_, el) => {
               const t = $(el).text().trim();
-              if (t && t.length < 100) specs.push(t);
+              if (t && t.length < 100 && !specs.includes(t)) specs.push(t);
             });
+            if (specs.length === 0) {
+              $('[class*="spec"], [class*="practice"], [class*="category"]').each((_, el) => {
+                const t = $(el).text().trim();
+                if (t && t.length < 100) specs.push(t);
+              });
+            }
             return specs.length > 0 ? specs : ['Не указана'];
           };
 
-          const getExperience = () =>
-            $('[class*="experience"], [class*="exp"], [class*="years"]').first().text().trim() ||
-            'Не указан';
-
-          const getPhone = () =>
-            $('[class*="phone"], [href^="tel:"]').first().text().trim() ||
-            $('[href^="tel:"]').first().attr('href')?.replace('tel:', '') || '';
-
-          const getEmail = () =>
-            $('[class*="email"], [href^="mailto:"]').first().text().trim() ||
-            $('[href^="mailto:"]').first().attr('href')?.replace('mailto:', '') || '';
-
-          const getRating = () => {
-            const r = $('[class*="rating"], [class*="score"], [class*="stars"]').first().text().trim();
-            return parseFloat(r) || undefined;
+          const getExperience = () => {
+            const text = $('body').text();
+            const match = text.match(/[Сс]таж\s+(?:более\s+)?(\d+)\s+лет/);
+            return match ? match[0] : 'Не указан';
           };
 
-          const getDescription = () =>
-            $('[class*="description"], [class*="about"], [class*="bio"]').first().text().trim().slice(0, 500);
+          const getPhone = () =>
+            $('[href^="tel:"]').first().attr('href')?.replace('tel:', '') ||
+            $('[class*="phone"]').first().text().trim() || '';
+
+          const getTelegram = () =>
+            $('a[href*="t.me"]').first().attr('href') || '';
+
+          const getRating = () => {
+            const text = $('body').text();
+            const match = text.match(/\b(\d+\.\d+)\b/);
+            return match ? parseFloat(match[1]) : undefined;
+          };
+
+          const getDescription = () => {
+            // Look for bio/about section
+            const selectors = ['[class*="description"]', '[class*="about"]', '[class*="bio"]', '[class*="text"]'];
+            for (const sel of selectors) {
+              const t = $(sel).first().text().trim();
+              if (t && t.length > 50) return t.slice(0, 800);
+            }
+            return '';
+          };
+
+          // Parse court cases by category
+          const getCases = () => {
+            const cases: Record<string, string[]> = {};
+            let currentCategory = '';
+            
+            $('body').find('*').each((_, el) => {
+              const text = $(el).text().trim();
+              const children = $(el).children().length;
+              
+              // Detect category headers (text without case numbers)
+              if (children === 0 && text && text.length < 50 && 
+                  !text.match(/^\d/) && !text.match(/^[А-Я]\d/) &&
+                  text.match(/[А-Яа-я]/) && !text.includes('₽')) {
+                // Check if next siblings contain case numbers
+                const nextText = $(el).parent().text();
+                if (nextText.match(/\d+-\d+\/\d+/)) {
+                  currentCategory = text;
+                  if (!cases[currentCategory]) cases[currentCategory] = [];
+                }
+              }
+              
+              // Detect case numbers like 2-1551/2024 or 1-137/2017
+              if (children === 0 && text.match(/^\d+-\d+\/\d{4}/) && currentCategory) {
+                cases[currentCategory].push(text);
+              }
+            });
+
+            // Fallback: extract all case numbers from page text
+            if (Object.keys(cases).length === 0) {
+              const allText = $('body').text();
+              const caseNumbers = allText.match(/\d+-\d+\/\d{4}[^\s]*/g) || [];
+              if (caseNumbers.length > 0) {
+                cases['Судебные дела'] = [...new Set(caseNumbers)];
+              }
+            }
+
+            return cases;
+          };
+
+          // Parse courts
+          const getCourts = () => {
+            const courts: Array<{ name: string; count: number }> = [];
+            const text = $('body').text();
+            // Pattern: "Октябрьский районный суд — 17"
+            const matches = text.matchAll(/([А-Яа-я\s]+(?:суд|трибунал)[А-Яа-я\s]*)\s*[—–-]\s*(\d+)/g);
+            for (const match of matches) {
+              courts.push({ name: match[1].trim(), count: parseInt(match[2]) });
+            }
+            return courts;
+          };
+
+          // Total cases count
+          const getCasesTotal = () => {
+            const text = $('body').text();
+            const match = text.match(/[Сс]удебных дел[а]?\s*\(?\s*(\d+)/);
+            return match ? parseInt(match[1]) : undefined;
+          };
 
           const profile = {
             name: getName(),
@@ -297,11 +369,14 @@ const handler = createMcpHandler(
             experience: getExperience(),
             contacts: {
               phone: getPhone(),
-              email: getEmail(),
+              telegram: getTelegram(),
             },
             rating: getRating(),
             description: getDescription(),
             profileUrl,
+            cases: getCases(),
+            courts: getCourts(),
+            totalCases: getCasesTotal(),
           };
 
           return {
