@@ -1,0 +1,22 @@
+{
+  "harant": {
+    "baseUrl": "https://harant.ru",
+    "searchPath": "/lawyers/search",
+    "profilePath": "/lawyers/profile"
+  },
+  "http": {
+    "timeout": 30000,
+    "maxRetries": 3,
+    "retryDelay": 1000
+  },
+  "cache": {
+    "enabled": true,
+    "ttl": 86400,
+    "maxSize": 1000
+  },
+  "logging": {
+    "level": "INFO",
+    "file": "harant-mcp.log",
+    "console": true
+  }
+}
