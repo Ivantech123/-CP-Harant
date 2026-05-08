@@ -1,5 +1,8 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
+  "/api/lawyer-profile/route": "app/api/lawyer-profile/route.js",
   "/api/mcp/route": "app/api/mcp/route.js",
+  "/api/search-lawyers/route": "app/api/search-lawyers/route.js",
+  "/api/openapi.json/route": "app/api/openapi.json/route.js",
   "/page": "app/page.js"
 }
